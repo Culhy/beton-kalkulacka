@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0d14">
+<title>BETON — kalkulačka směsi</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;min-width:0}
+  [hidden]{display:none!important}
+  :root{
+    --k:1;
+    --bg:#0e0d14;
+    --ink:#f4f2ff;
+    --dim:#8b86a8;
+    --line:#2a2740;
+    --cement:#d9ff3d;
+    --pisek:#ffb03a;
+    --kamen:#b8b5c6;
+    --voda:#7d94ff;
+    --hot:#ff4d9d;
+  }
+  html,body{height:100%;overflow:hidden;background:var(--bg)}
+  body{
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+    background:
+      radial-gradient(90% 60% at 8% -10%, rgba(255,77,157,.20), transparent 60%),
+      radial-gradient(70% 50% at 100% 0%, rgba(184,181,198,.10), transparent 60%),
+      radial-gradient(90% 60% at 50% 110%, rgba(217,255,61,.12), transparent 60%),
+      var(--bg);
+  }
+  .app{
+    height:100vh;height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 8px) 10px calc(env(safe-area-inset-bottom) + 8px);
+    display:flex;flex-direction:column;gap:calc(clamp(4px,1.2vh,11px) * var(--k));
+    max-width:560px;margin:0 auto;
+  }
+
+  /* ---------- header ---------- */
+  header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto}
+  .logo{display:flex;align-items:baseline;gap:6px;letter-spacing:-.04em;overflow:hidden}
+  .logo b{
+    font-size:calc(clamp(16px,4vh,26px) * var(--k));font-weight:900;
+    background:linear-gradient(92deg,var(--hot),var(--cement) 70%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap;
+  }
+  .logo span{font-size:9px;font-weight:800;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;white-space:nowrap}
+  .seg{display:flex;background:#191727;border:2px solid var(--line);border-radius:999px;padding:2px;gap:2px;flex:0 0 auto}
+  .seg button{
+    font:800 11px/1 inherit;letter-spacing:.03em;color:var(--dim);background:none;border:0;
+    padding:calc(7px * var(--k)) 10px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  }
+  .seg button.on{background:var(--hot);color:#14000a;box-shadow:0 0 18px -4px var(--hot)}
+  .seg.wide{width:100%;flex:0 0 auto}
+  .seg.wide button{flex:1 1 0;padding:calc(clamp(5px,1.1vh,9px) * var(--k)) 4px;
+    font-size:calc(clamp(10px,1.9vh,13px) * var(--k));overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- popisky ---------- */
+  .lblrow{display:flex;align-items:center;justify-content:space-between;gap:8px;
+          margin-bottom:calc(4px * var(--k))}
+  .lbl{font:800 9px/1 inherit;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+       display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mini{background:none;border:0;color:var(--hot);cursor:pointer;padding:2px 0;
+        font:800 9px/1 inherit;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+
+  /* ---------- objem ---------- */
+  .box{background:rgba(255,255,255,.04);border:2px solid var(--line);border-radius:16px;
+       padding:calc(clamp(5px,1.2vh,10px) * var(--k)) 10px}
+  .vol{display:flex;align-items:center;gap:8px}
+  .vol button{
+    width:calc(clamp(32px,6.6vh,46px) * var(--k));height:calc(clamp(32px,6.6vh,46px) * var(--k));
+    flex:0 0 auto;border-radius:13px;cursor:pointer;
+    background:#191727;border:2px solid var(--line);color:var(--ink);font:900 21px/1 inherit;
+  }
+  .vol button:active{transform:translateY(2px);border-color:var(--hot)}
+  .vol .field{flex:1;display:flex;align-items:baseline;justify-content:center;gap:5px;min-width:0}
+  .vol input{
+    width:100%;max-width:150px;text-align:right;background:none;border:0;color:var(--ink);
+    font:900 calc(clamp(24px,5.8vh,42px) * var(--k))/1 inherit;letter-spacing:-.03em;outline:none;
+  }
+  .vol .unit{font:900 calc(clamp(12px,2.3vh,16px) * var(--k))/1 inherit;color:var(--cement)}
+
+  /* ---------- pevnost ---------- */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+  .chip{
+    border:2px solid var(--line);background:#171524;border-radius:13px;cursor:pointer;color:var(--ink);
+    padding:calc(clamp(3px,1vh,9px) * var(--k)) 2px;text-align:center;font-family:inherit;overflow:hidden;
+  }
+  .chip b{display:block;font-size:calc(clamp(12px,2.7vh,18px) * var(--k));font-weight:900;letter-spacing:-.02em}
+  .chip i{display:block;font-style:normal;font-size:8.5px;font-weight:700;color:var(--dim);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .chip.on{background:var(--cement);border-color:var(--cement);color:#131500;box-shadow:0 0 22px -8px var(--cement)}
+  .chip.on i{color:#3d4400}
+  .chip.out{border-color:var(--cement);color:var(--cement);background:#1a1d08;box-shadow:0 0 22px -10px var(--cement)}
+  .chip.out i{color:#8a9c2e}
+
+  /* ---------- složení ---------- */
+  .selwrap{position:relative}
+  .selwrap::after{content:"▾";position:absolute;right:13px;top:50%;transform:translateY(-50%);
+    color:var(--hot);font-size:14px;pointer-events:none}
+  select{
+    width:100%;appearance:none;-webkit-appearance:none;background:#171524;color:var(--ink);
+    border:2px solid var(--line);border-radius:14px;
+    padding:calc(clamp(7px,1.5vh,12px) * var(--k)) 32px calc(clamp(7px,1.5vh,12px) * var(--k)) 12px;
+    font:800 calc(clamp(12px,2.3vh,15px) * var(--k))/1.1 inherit;letter-spacing:-.01em;outline:none;
+    text-overflow:ellipsis;
+  }
+  select:focus{border-color:var(--hot)}
+  .ratio{display:flex;align-items:center;gap:6px}
+  .ratio input{
+    flex:1 1 0;min-width:0;text-align:center;background:#171524;color:var(--ink);
+    border:2px solid var(--line);border-radius:14px;outline:none;
+    padding:calc(clamp(6px,1.4vh,11px) * var(--k)) 2px;
+    font:900 calc(clamp(14px,2.8vh,20px) * var(--k))/1 inherit;letter-spacing:-.02em;
+  }
+  #rc{border-color:var(--cement);color:var(--cement)}
+  #rs{border-color:var(--pisek);color:var(--pisek)}
+  #rg{border-color:var(--kamen);color:var(--kamen)}
+  .ratio span{font:900 calc(clamp(13px,2.4vh,18px) * var(--k))/1 inherit;color:var(--dim);flex:0 0 auto}
+  .parts{margin-top:calc(4px * var(--k));font:800 8.5px/1 inherit;letter-spacing:.14em;
+    color:var(--dim);text-transform:uppercase;text-align:center;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- výsledky ---------- */
+  .out{flex:1 1 auto;min-height:min-content;display:flex;flex-direction:column;gap:calc(clamp(4px,1vh,9px) * var(--k))}
+  .card{
+    border:2px solid var(--c);border-radius:16px;min-height:min-content;overflow:hidden;
+    padding:calc(clamp(4px,1.2vh,12px) * var(--k)) 11px;
+    background:linear-gradient(155deg,rgba(255,255,255,.075),rgba(255,255,255,.015));
+    box-shadow:0 0 26px -16px var(--c);display:flex;flex-direction:column;justify-content:center;
+  }
+  .card .t{font:900 8.5px/1 inherit;letter-spacing:.18em;color:var(--c);text-transform:uppercase}
+  .card .v{font-weight:900;letter-spacing:-.035em;line-height:1;margin-top:calc(4px * var(--k));
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .v u{text-decoration:none;font-size:.45em;color:var(--dim);margin-left:4px;letter-spacing:0}
+  .card .s{font:700 9.5px/1.2 inherit;color:var(--dim);margin-top:calc(3px * var(--k));
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hero{flex:1.15 1 0}
+  .hero .v{font-size:calc(clamp(24px,5.6vh,46px) * var(--k))}
+  .row{display:flex;gap:calc(clamp(4px,1vh,9px) * var(--k));flex:1 1 0;min-height:min-content}
+  .row .card{flex:1 1 0}
+  .row .v{font-size:calc(clamp(17px,3.6vh,30px) * var(--k))}
+  .water{flex:.85 1 0}
+  .water .v{font-size:calc(clamp(18px,3.8vh,32px) * var(--k))}
+
+  /* ---------- footer ---------- */
+  footer{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+  .note{flex:1;min-width:0;font:700 8.5px/1.3 inherit;color:var(--dim);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #reset{
+    flex:0 0 auto;background:#191727;border:2px solid var(--hot);color:var(--hot);border-radius:999px;
+    padding:calc(clamp(6px,1.2vh,10px) * var(--k)) 14px;font:900 10px/1 inherit;
+    letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
+  }
+  #reset:active{background:var(--hot);color:#14000a}
+  .tight .card .s,.tight .parts{display:none}
+  body.scroll{overflow:auto}
+  body.scroll .app{height:auto;min-height:100dvh}
+  .flash{animation:fl .45s ease}
+  @keyframes fl{0%{filter:brightness(2.2) saturate(.4)}100%{filter:none}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo"><b>BETON</b><span>mix kalkulačka</span></div>
+    <div class="seg" id="unit">
+      <button type="button" data-u="kg" class="on">kg + l</button>
+      <button type="button" data-u="lopaty">lopaty</button>
+    </div>
+  </header>
+
+  <div>
+    <div class="lblrow"><span class="lbl">Objem betonu</span></div>
+    <div class="box">
+      <div class="vol">
+        <button id="minus" type="button" aria-label="ubrat">−</button>
+        <div class="field">
+          <input id="m3" type="text" inputmode="decimal" value="1" aria-label="objem v m3">
+          <span class="unit">m³</span>
+        </div>
+        <button id="plus" type="button" aria-label="přidat">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="lblrow"><span class="lbl" id="clsLbl">Pevnost / použití</span></div>
+    <div class="grid3" id="classes"></div>
+  </div>
+
+  <div>
+    <div class="lblrow">
+      <span class="lbl" id="mixLbl">Doporučené složení</span>
+      <button class="mini" id="mode" type="button">vlastní poměr →</button>
+    </div>
+    <div class="selwrap" id="mixwrap"><select id="mix"></select></div>
+    <div class="ratio" id="ratio" hidden>
+      <input id="rc" type="text" inputmode="decimal" value="1" aria-label="díly cementu">
+      <span>:</span>
+      <input id="rs" type="text" inputmode="decimal" value="2" aria-label="díly písku">
+      <span>:</span>
+      <input id="rg" type="text" inputmode="decimal" value="3,5" aria-label="díly kameniva">
+    </div>
+    <div class="parts" id="parts">cement | písek | kamenivo</div>
+  </div>
+
+  <div class="seg wide" id="scope">
+    <button type="button" data-s="total" class="on">celkem</button>
+    <button type="button" data-s="batch">na 1 míchačku</button>
+  </div>
+
+  <div class="out">
+    <div class="card hero" style="--c:var(--cement)">
+      <div class="t">Cement</div>
+      <div class="v" id="cv">—</div>
+      <div class="s" id="cs">—</div>
+    </div>
+    <div class="row">
+      <div class="card" style="--c:var(--pisek)">
+        <div class="t">Písek</div>
+        <div class="v" id="pv">—</div>
+        <div class="s" id="ps">—</div>
+      </div>
+      <div class="card" id="kcard" style="--c:var(--kamen)">
+        <div class="t">Kamenivo</div>
+        <div class="v" id="kv">—</div>
+        <div class="s" id="ks">—</div>
+      </div>
+    </div>
+    <div class="card water" style="--c:var(--voda)">
+      <div class="t">Záměsová voda</div>
+      <div class="v" id="wv">—</div>
+      <div class="s" id="ws">—</div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="note" id="note">—</div>
+    <button id="reset" type="button">Reset</button>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* objemové díly cement : písek : kamenivo */
+  var CLASSES = [
+    {k:"B7,5", use:"podklad", wc:[0.70,0.85], mixes:[
+      {l:"1 : 3,5 : 6 — podkladní beton", c:1, s:3.5, g:6},
+      {l:"1 : 3 : 6 — hutnější", c:1, s:3, g:6},
+      {l:"1 : 8 — mazanina, ne beton", c:1, s:8, g:0}
+    ]},
+    {k:"B10", use:"patky plotu", wc:[0.65,0.80], mixes:[
+      {l:"1 : 3 : 5,5 — zálivky, patky", c:1, s:3, g:5.5},
+      {l:"1 : 3 : 5 — hutnější", c:1, s:3, g:5},
+      {l:"1 : 7 — mazanina, ne beton", c:1, s:7, g:0}
+    ]},
+    {k:"B15", use:"chodník", wc:[0.58,0.70], mixes:[
+      {l:"1 : 2,5 : 4 — chodník, podklad", c:1, s:2.5, g:4},
+      {l:"1 : 2,5 : 3,5 — jemnější", c:1, s:2.5, g:3.5},
+      {l:"1 : 6 — mazanina, ne beton", c:1, s:6, g:0}
+    ]},
+    {k:"B20", use:"základy", wc:[0.50,0.60], mixes:[
+      {l:"1 : 2 : 3,5 — klasika na základy", c:1, s:2, g:3.5},
+      {l:"1 : 2 : 3 — bohatší, lépe se hutní", c:1, s:2, g:3},
+      {l:"1 : 5 — mazanina, ne beton", c:1, s:5, g:0}
+    ]},
+    {k:"B25", use:"deska, schody", wc:[0.45,0.55], mixes:[
+      {l:"1 : 1,5 : 3 — nosná deska, schody", c:1, s:1.5, g:3},
+      {l:"1 : 2 : 3 — s hrubším pískem", c:1, s:2, g:3},
+      {l:"1 : 4 — potěr, ne beton", c:1, s:4, g:0}
+    ]},
+    {k:"B30", use:"sloupy, věnce", wc:[0.40,0.50], mixes:[
+      {l:"1 : 1,5 : 2,5 — nosné konstrukce", c:1, s:1.5, g:2.5},
+      {l:"1 : 1,5 : 2 — bohatší na cement", c:1, s:1.5, g:2},
+      {l:"1 : 3 — potěr, ne beton", c:1, s:3, g:0}
+    ]}
+  ];
+
+  /* hranice dávky cementu (kg/m³) pro odhad třídy ze zadaného poměru */
+  var THR = [165, 187, 222, 267, 312, 355];
+
+  /* sypné hmotnosti kg/m³ a objemy nádob v litrech */
+  var D = {c:1200, s:1600, g:1500};
+  var LOPATA = 1.7, FANKA = 1.5, KYBL = 10, KOLECKO = 60, PYTEL = 25;
+  /* Míchačka: buben 125 l, ale nasadit jde jen ~45 % objemu, jinak se to nepromíchá
+     a přepadává. Záběr se proto počítá ze SYPKÉ násady, ne z hotového betonu. */
+  var MIX_DRUM = 125, MIX_FILL = 0.45, LOOSE_BATCH = MIX_DRUM * MIX_FILL;
+  var KEY = "beton-kalkulacka-v1";
+  var DEF = {m3:1, cls:3, mix:0, unit:"kg", scope:"total", rev:false, rt:false, r:{c:1, s:2, g:3.5}};
+  var st = load();
+
+  function copy(o){
+    return {m3:o.m3, cls:o.cls, mix:o.mix, unit:o.unit, scope:o.scope, rev:o.rev, rt:o.rt,
+            r:{c:o.r.c, s:o.r.s, g:o.r.g}};
+  }
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(!raw) return copy(DEF);
+      var s = JSON.parse(raw) || {}, o = copy(DEF);
+      if(typeof s.m3 === "number" && isFinite(s.m3) && s.m3 >= 0) o.m3 = Math.min(s.m3, 999);
+      var ci = parseInt(s.cls, 10), mi = parseInt(s.mix, 10);
+      if(CLASSES[ci]) o.cls = ci;
+      if(CLASSES[o.cls].mixes[mi]) o.mix = mi;
+      if(s.unit === "kg" || s.unit === "lopaty") o.unit = s.unit;
+      if(s.scope === "total" || s.scope === "batch") o.scope = s.scope;
+      o.rev = (s.rev === true);
+      o.rt  = (s.rt === true);
+      if(s.r){
+        ["c","s","g"].forEach(function(x){
+          var n = parseFloat(s.r[x]);
+          if(isFinite(n) && n >= 0 && n <= 99) o.r[x] = n;
+        });
+      }
+      if(!(o.r.c > 0)) o.r.c = DEF.r.c;
+      return o;
+    }catch(e){ return copy(DEF); }
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(st)); }catch(e){} }
+
+  function num(n, d){
+    if(!isFinite(n)) n = 0;
+    return n.toLocaleString("cs-CZ", {minimumFractionDigits:d, maximumFractionDigits:d});
+  }
+  function fmt(n){ return n >= 100 ? num(n,0) : (n >= 10 ? num(n,1) : num(n,2)); }
+  function ceilN(n){ return Math.max(0, Math.ceil(n - 0.001)); }
+  function dec(n){                            /* 3,5 ať se nepíše jako 3,50 */
+    if(Math.abs(n % 1) < 0.0001) return 0;
+    return (Math.abs((n*10) % 1) < 0.0001) ? 1 : 2;
+  }
+  function volSub(m3v){                       /* malé dávky raději v litrech než v setinách m³ */
+    var l = m3v * 1000;
+    return l < 300 ? ("≈ " + fmt(l) + " l") : ("≈ " + num(m3v, 2) + " m³");
+  }
+  function shovels(kgv, dens){                 /* půl lopaty je nejjemnější dávka, co jde nabrat */
+    var n = Math.round(kgv / (LOPATA * dens / 1000) * 2) / 2;
+    return n.toLocaleString("cs-CZ", {minimumFractionDigits:(n % 1 ? 1 : 0), maximumFractionDigits:1});
+  }
+  function wheelSub(m3v){
+    var w = m3v * 1000 / KOLECKO;
+    return w < 1 ? ("≈ " + fmt(m3v*1000) + " l") : ("≈ " + fmt(w) + " koleček");
+  }
+
+  var $ = function(id){ return document.getElementById(id); };
+  var elClasses = $("classes"), elMix = $("mix"), elM3 = $("m3"), app = document.querySelector(".app");
+  var R = {c:$("rc"), s:$("rs"), g:$("rg")};
+
+  /* ---- pevnostní třídy ---- */
+  CLASSES.forEach(function(cl, i){
+    var b = document.createElement("button");
+    b.className = "chip";
+    b.type = "button";
+    b.innerHTML = "<b>" + cl.k + "</b><i>" + cl.use + "</i>";
+    b.onclick = function(){ st.cls = i; st.mix = 0; st.rev = false; syncMode(); render(); };
+    elClasses.appendChild(b);
+  });
+
+  function fillMixes(){
+    elMix.innerHTML = "";
+    CLASSES[st.cls].mixes.forEach(function(m, i){
+      var o = document.createElement("option");
+      o.value = i; o.textContent = m.l;
+      elMix.appendChild(o);
+    });
+    elMix.value = st.mix;
+  }
+
+  /* ---- výpočet ---- */
+  function classFromCement(kgm3){             /* odhad třídy z dávky cementu na m³ */
+    if(!(kgm3 > 0) || kgm3 < THR[0]) return -1;
+    for(var i = 1; i < THR.length; i++){ if(kgm3 < THR[i]) return i - 1; }
+    return THR.length - 1;
+  }
+
+  function calc(){
+    var m = st.rev ? {c:st.r.c, s:st.r.s, g:st.r.g} : CLASSES[st.cls].mixes[st.mix];
+    var parts = m.c + m.s + m.g;
+    var factor = m.g > 0 ? 1.55 : 1.35;       /* sypký objem -> zhutněný beton */
+    var ok = parts > 0 && m.c > 0;
+    var cem1 = ok ? factor * D.c * m.c / parts : 0;   /* kg cementu na 1 m³ */
+    var ci = st.rev ? classFromCement(cem1) : st.cls;
+    var cl = CLASSES[ci] || CLASSES[st.rev ? 0 : st.cls];
+    var Vd = ok ? st.m3 * factor : 0;
+    var v = {c: ok ? Vd*m.c/parts : 0, s: ok ? Vd*m.s/parts : 0, g: ok ? Vd*m.g/parts : 0};
+    var kg = {c: v.c*D.c, s: v.s*D.s, g: v.g*D.g};
+    return {m:m, ci:ci, cl:cl, cem1:cem1, v:v, kg:kg, w:[kg.c*cl.wc[0], kg.c*cl.wc[1]]};
+  }
+
+  function set(vid, sid, val, sub){ $(vid).innerHTML = val; $(sid).textContent = sub; }
+
+  /* ---- zmenši, dokud se to nevejde na jednu obrazovku ---- */
+  function fit(){
+    var root = document.documentElement, k = 1, guard = 0;
+    root.style.setProperty("--k", "1");
+    app.classList.remove("tight");
+    document.body.classList.remove("scroll");
+    while(app.scrollHeight > window.innerHeight + 1 && k > 0.55 && guard++ < 16){
+      k = Math.round((k - 0.04) * 100) / 100;
+      root.style.setProperty("--k", String(k));
+    }
+    if(app.scrollHeight > window.innerHeight + 1){       /* schovej doplňky a zkus dál */
+      app.classList.add("tight");
+      guard = 0;
+      while(app.scrollHeight > window.innerHeight + 1 && k > 0.4 && guard++ < 8){
+        k = Math.round((k - 0.05) * 100) / 100;
+        root.style.setProperty("--k", String(k));
+      }
+    }
+    /* na ležato nebo s otevřenou klávesnicí se to nevejde ani tak — pusť radši scroll,
+       useknutý obsah bez možnosti odrolovat je horší než scroll */
+    if(app.scrollHeight > window.innerHeight + 1) document.body.classList.add("scroll");
+  }
+
+  /* ---- přepnutí zadání <-> odhad ---- */
+  function syncMode(){
+    $("mixwrap").hidden = st.rev;
+    $("ratio").hidden = !st.rev;
+    $("mixLbl").textContent = st.rev ? "Vlastní poměr" : "Doporučené složení";
+    $("clsLbl").textContent = st.rev ? "Vychází pevnost (odhad)" : "Pevnost / použití";
+    $("mode").textContent = st.rev ? "← doporučené" : "vlastní poměr →";
+    R.c.value = num(st.r.c, dec(st.r.c));
+    R.s.value = num(st.r.s, dec(st.r.s));
+    R.g.value = num(st.r.g, dec(st.r.g));
+  }
+
+  function render(){
+    var r = calc();
+    var m = r.m, lopaty = (st.unit === "lopaty");
+    var noGravel = !(m.g > 0);
+    var hasCement = m.c > 0;
+    /* třídu betonu hlásím jen tam, kde o beton vůbec jde */
+    var shownCi = (st.rev && (noGravel || !hasCement)) ? -1 : r.ci;
+
+    Array.prototype.forEach.call(elClasses.children, function(b, i){
+      b.className = "chip" + (st.rev ? (i === shownCi ? " out" : "") : (i === st.cls ? " on" : ""));
+    });
+    if(!st.rev) fillMixes();
+
+    var looseAll = (r.v.c + r.v.s + r.v.g) * 1000;      /* sypké suroviny celkem, v litrech */
+    var batches = ceilN(looseAll / LOOSE_BATCH);
+    var div = (st.scope === "batch" && batches > 0) ? batches : 1;
+    var kg = {c: r.kg.c/div, s: r.kg.s/div, g: r.kg.g/div};
+    var v  = {c: r.v.c/div,  s: r.v.s/div,  g: r.v.g/div};
+    var w  = [r.w[0]/div, r.w[1]/div];
+
+    $("parts").textContent = noGravel ? "cement | písek — mazanina, ne beton" : "cement | písek | kamenivo";
+    $("kcard").hidden = noGravel;
+
+    var bags = (div === 1)
+      ? (ceilN(kg.c/PYTEL) + " pytlů á 25 kg")
+      : (fmt(kg.c/PYTEL) + " pytle (25 kg)");
+
+    if(lopaty){
+      set("cv","cs",
+        shovels(kg.c, D.c) + " <u>lopat</u>",
+        "≈ " + fmt(v.c*1000/FANKA) + " fanek (1,5 l) · " + bags);
+      set("pv","ps", shovels(kg.s, D.s) + " <u>lopat</u>", wheelSub(v.s));
+      set("kv","ks", shovels(kg.g, D.g) + " <u>lopat</u>", wheelSub(v.g));
+      set("wv","ws",
+        fmt(w[0]) + "–" + fmt(w[1]) + " <u>l</u>",
+        "≈ " + fmt(w[0]/KYBL) + "–" + fmt(w[1]/KYBL) + " kýblů (10 l)");
+    }else{
+      set("cv","cs", fmt(kg.c) + " <u>kg</u>", "≈ " + bags + " · " + fmt(v.c*1000) + " l");
+      set("pv","ps", fmt(kg.s) + " <u>kg</u>", volSub(v.s));
+      set("kv","ks", fmt(kg.g) + " <u>kg</u>", volSub(v.g));
+      set("wv","ws",
+        fmt(w[0]) + "–" + fmt(w[1]) + " <u>l</u>",
+        hasCement ? ("w/c " + num(r.cl.wc[0],2) + "–" + num(r.cl.wc[1],2) + " · odečti vlhký písek")
+                  : "w/c — · zadej díl cementu");
+    }
+
+    var total = kg.c + kg.s + kg.g + (w[0]+w[1])/2;
+    var loose = (v.c + v.s + v.g) * 1000;                /* násada na jeden záběr */
+    var tail = (st.scope === "batch" && batches > 0)
+      ? "1 z " + batches + " záběrů · násada " + fmt(loose) + " l do bubnu " + MIX_DRUM + " l"
+      : "míchačka " + MIX_DRUM + " l ≈ " + batches + " záběrů";
+    var est;
+    if(!hasCement)      est = "zadej díl cementu";
+    else if(noGravel)   est = "malta/potěr — třídu betonu neurčuji";
+    else if(r.ci < 0)   est = "pod B7,5";
+    else                est = "odhad " + CLASSES[r.ci].k + (r.cem1 > 430 ? "+" : "");
+    $("note").textContent = st.rev
+      ? "cement ≈ " + fmt(r.cem1) + " kg/m³ → " + est + " · " + tail
+      : "≈ " + fmt(total) + " kg směsi · " + tail + " · lopata 1,7 l · fanka 1,5 l";
+
+    save();
+    fit();
+  }
+
+  /* ---- vstupy ---- */
+  function over(txt, max){
+    var raw = parseFloat(String(txt).replace(/\s/g, "").replace(",", "."));
+    return isFinite(raw) && raw > max;
+  }
+  function parse(txt, max){
+    var t = String(txt).replace(/\s/g, "").replace(",", ".");
+    if(t === "" || t === ".") return 0;
+    if(!/^\d{0,3}(\.\d{0,2})?$/.test(t)) return null;   /* nesmysl -> drž starou hodnotu */
+    var n = parseFloat(t);
+    return isFinite(n) ? Math.min(n, max) : 0;
+  }
+  elM3.addEventListener("input", function(){
+    var n = parse(elM3.value, 999);
+    if(n === null){ elM3.value = num(st.m3, dec(st.m3)); return; }
+    st.m3 = n;
+    if(over(elM3.value, 999)) elM3.value = num(n, dec(n));
+    render();
+  });
+  elM3.addEventListener("focus", function(){ elM3.select(); });
+  elM3.addEventListener("blur", function(){
+    st.m3 = Math.round(st.m3 * 100) / 100;      /* co je vidět, s tím se počítá */
+    elM3.value = num(st.m3, dec(st.m3));
+    render();
+  });
+  function step(d){
+    var base = st.m3 < 1 ? 0.1 : (st.m3 < 5 ? 0.25 : 0.5);
+    st.m3 = Math.max(0, Math.min(999, Math.round((st.m3 + d*base)*100)/100));
+    elM3.value = num(st.m3, dec(st.m3));
+    render();
+  }
+  $("plus").onclick  = function(){ step(1); };
+  $("minus").onclick = function(){ step(-1); };
+  elMix.onchange = function(){ st.mix = parseInt(elMix.value, 10) || 0; render(); };
+
+  ["c","s","g"].forEach(function(x){
+    R[x].addEventListener("input", function(){
+      var n = parse(R[x].value, 99);
+      if(n === null){ R[x].value = num(st.r[x], dec(st.r[x])); return; }
+      st.r[x] = n; st.rt = true;
+      if(over(R[x].value, 99)) R[x].value = num(n, dec(n));
+      render();
+    });
+    R[x].addEventListener("focus", function(){ R[x].select(); });
+    R[x].addEventListener("blur", function(){
+      if(x === "c" && !(st.r.c > 0)) st.r.c = 1;   /* bez cementu to není směs */
+      R[x].value = num(st.r[x], dec(st.r[x]));
+      render();
+    });
+  });
+
+  $("mode").onclick = function(){
+    if(!st.rev && !st.rt){                        /* předvyplní se jen dokud sis poměr nesáhl */
+      var m = CLASSES[st.cls].mixes[st.mix];
+      st.r = {c:m.c, s:m.s, g:m.g};
+    }
+    st.rev = !st.rev;
+    syncMode();
+    render();
+  };
+
+  var seg = $("unit"), scopeSeg = $("scope");
+  function paintSeg(){
+    Array.prototype.forEach.call(seg.children, function(x){
+      x.className = (x.getAttribute("data-u") === st.unit) ? "on" : "";
+    });
+  }
+  function paintScope(){
+    Array.prototype.forEach.call(scopeSeg.children, function(x){
+      x.className = (x.getAttribute("data-s") === st.scope) ? "on" : "";
+    });
+  }
+  Array.prototype.forEach.call(seg.children, function(b){
+    b.onclick = function(){ st.unit = b.getAttribute("data-u"); paintSeg(); render(); };
+  });
+  Array.prototype.forEach.call(scopeSeg.children, function(b){
+    b.onclick = function(){ st.scope = b.getAttribute("data-s"); paintScope(); render(); };
+  });
+
+  $("reset").onclick = function(){
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    st = copy(DEF);
+    elM3.value = num(st.m3, dec(st.m3));
+    paintSeg(); paintScope(); syncMode();
+    app.classList.remove("flash"); void app.offsetWidth; app.classList.add("flash");
+    render();
+  };
+
+  window.addEventListener("resize", function(){
+    var a = document.activeElement;                      /* klávesnice zmenší viewport, layout ne */
+    if(a && (a.tagName === "INPUT" || a.tagName === "SELECT")) return;
+    fit();
+  });
+  window.addEventListener("orientationchange", function(){ setTimeout(fit, 250); });
+
+  /* ---- start ---- */
+  elM3.value = num(st.m3, dec(st.m3));
+  paintSeg(); paintScope(); syncMode();
+  render();
+})();
+</script>
+</body>
+</html>
